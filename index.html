@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Nafees TV Player</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#p{position:fixed;inset:0;width:100%;height:100%}</style>
+</head><body><div id="p"></div>
+<script>
+// مشغّل يوتيوب لتطبيق النفيس تي في (سامسونج). التطبيق بيبعت أوامر بـ postMessage وهاي الصفحة بترد بالأحداث.
+var q = new URLSearchParams(location.search), vid = q.get('v'), list = q.get('list'), player;
+function up(ev, data) { try { parent.postMessage(JSON.stringify({ nafees: 1, ev: ev, data: data }), '*'); } catch (e) {} }
+var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
+s.onerror = function () { up('error', 'net'); }; document.head.appendChild(s);
+function onYouTubeIframeAPIReady() {
+  var vars = { autoplay: 1, controls: 1, rel: 0, playsinline: 1, modestbranding: 1, iv_load_policy: 3 };
+  if (list) { vars.listType = 'playlist'; vars.list = list; }
+  player = new YT.Player('p', { width: '100%', height: '100%', videoId: vid, playerVars: vars, events: {
+    onReady: function (e) { up('ready'); e.target.playVideo(); },
+    onStateChange: function (e) { up('state', e.data); if (e.data === 0) up('ended'); },
+    onError: function (e) { up('error', e.data); }
+  }});
+}
+window.addEventListener('message', function (e) {
+  var m; try { m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (x) { return; }
+  if (!m || !m.cmd || !player || !player.getPlayerState) return;
+  if (m.cmd === 'toggle') { player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo(); }
+  if (m.cmd === 'seek') { player.seekTo(Math.max(0, player.getCurrentTime() + m.d), true); }
+  if (m.cmd === 'vol') { player.unMute(); player.setVolume(Math.max(0, Math.min(100, player.getVolume() + m.d))); }
+});
+</script></body></html>
